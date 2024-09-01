@@ -7,6 +7,7 @@ langsmith
 pandas
 numpy
 streamlit
+streamlit-option-menu
 fastapi
 uvicorn
 neo4j
