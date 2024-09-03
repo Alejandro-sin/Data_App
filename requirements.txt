@@ -17,3 +17,5 @@ great_expectations
 yfiles-jupyter-graphs
 boto3
 awswrangler
+matplotlib
+seaborn
