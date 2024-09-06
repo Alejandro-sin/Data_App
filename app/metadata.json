@@ -1,0 +1,65 @@
+{
+    "tables": [
+      {
+        "table_name": "hired_employees",
+        "columns": [
+          {
+            "column_name": "id",
+            "type": "INTEGER",
+            "description": "Id of the employee"
+          },
+          {
+            "column_name": "name",
+            "type": "STRING",
+            "description": "Name and surname of the employee"
+          },
+          {
+            "column_name": "datetime",
+            "type": "STRING",
+            "description": "Hire datetime in ISO format"
+          },
+          {
+            "column_name": "department_id",
+            "type": "INTEGER",
+            "description": "Id of the department which the employee was hired for"
+          },
+          {
+            "column_name": "job_id",
+            "type": "INTEGER",
+            "description": "Id of the job which the employee was hired for"
+          }
+        ]
+      },
+      {
+        "table_name": "departments",
+        "columns": [
+          {
+            "column_name": "id",
+            "type": "INTEGER",
+            "description": "Id of the department"
+          },
+          {
+            "column_name": "department",
+            "type": "STRING",
+            "description": "Name of the department"
+          }
+        ]
+      },
+      {
+        "table_name": "jobs",
+        "columns": [
+          {
+            "column_name": "id",
+            "type": "INTEGER",
+            "description": "Id of the job"
+          },
+          {
+            "column_name": "job",
+            "type": "STRING",
+            "description": "Name of the job"
+          }
+        ]
+      }
+    ]
+  }
+  
