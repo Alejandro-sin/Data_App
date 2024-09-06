@@ -10,11 +10,17 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import pandas as pd
 from io import StringIO
+import requests as rq
+from sqlalchemy import create_engine
+from utils import dbs_utils
+import os
+import time
 
 
 
 
-options = ["DataBox","InsigthsBox", "KnowledgeBox"]
+#API_URL = "http://127.0.0.1:8000/files"
+options = ["DataBox", "KnowledgeBox"]
 
 
 with st.sidebar:
@@ -26,69 +32,91 @@ with st.sidebar:
         default_index=0,
     )
 
+#response =  rq.get(API_URL)
+#st.write(response.content)
+engine = create_engine('sqlite:///:memory:')
+db_name = "data_db"
 
 
-if select =="DataBox":
+
+def clean_filename(filename):
+    name = os.path.splitext(filename)[0]  # Elimina la extensión
+    return name.replace(" ", "_")  # Reemplaza espacios con guiones bajos para que sea válido como nombre de tabla
+
+        
+def process_chunks(file, columns, table_name, chunksize=1000):
+    for chunk in pd.read_csv(file, 
+                             sep=",", 
+                             header=None, 
+                             names=columns, 
+                             encoding="utf-8", 
+                             index_col=0, 
+                             chunksize=chunksize):
+        
+        dbs_utils.save_dataframe_to_sql(chunk, db_name='sql_db', table_name=table_name)
+
+
+
+if select == "DataBox":
     st.markdown("""
         # Feed with data
-        """)
+    """)
+
+    
     uploaded_file = st.file_uploader(" ")
+
     if uploaded_file is not None:
-          # To read file as bytes:
-        bytes_data = uploaded_file.getvalue()
-        st.write(bytes_data)
+        # Limpiar el nombre del archivo y usarlo como nombre de tabla
+        table_name = clean_filename(uploaded_file.name)
 
-        # To convert to a string based IO:
-        stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-        st.write(stringio)
+        # Definir columnas dependiendo del nombre de la tabla
+        if table_name == 'jobs':
+            columns = ["id", "job"]
+        elif table_name == "departments":
+            columns = ["id"]
+        elif table_name == "hired_employees":
+            columns = ["id", "name", "datetime", "department_id", "job_id"]
+        else:
+            st.warning('The headers of data can be inferred', icon="⚠️")
+            table_name = "No table Name"
+            columns = None  # Se infiere el encabezado manual
 
-        # To read file as string:
-        string_data = stringio.read()
-        st.write(string_data)
+        dataframe = pd.read_csv(uploaded_file,
+                                    sep=",",
+                                    header= None,
+                                    names = columns,
+                                    encoding="utf-8",
+                                    index_col=0
+                                    )
+        st.write("______________________________________________________")
+        with st.spinner('Wait for it...'):
+            time.sleep(1.5)
+            st.markdown(f"""#### Processing Batch of: :green[{len(dataframe)}] rows for table: :green['{table_name}']""")
+       
+            st.dataframe(dataframe,
+                         width=1000)
 
-        # Can be used wherever a "file-like" object is accepted:
-        dataframe = pd.read_csv(uploaded_file)
-        st.write(dataframe)
-
-elif select =="InsigthsBox":
-    st.markdown("""
-        # InsigthsBox
-        """)
-    
-    col1, col2 = st.columns(2)
-
-    
-    col1.header("Graficos")
-    original = st.write("Graficos por construir")
-
-    
-    col2.header("AI Suggestions")
-    col2.write("Cuadro de respuestas de la AI")
-
+        if table_name != "No table Name":
+            # Procesar el archivo por lotes de 1000 filas
+            process_chunks(uploaded_file, columns, table_name)
+        else:
+            # Si no se puede determinar el nombre de la tabla o las columnas
+            st.error("Invalid name for table!")
 
 
-
-    st.chat_input()
 elif select =="KnowledgeBox":
     st.markdown("""
         # KnowledgeBox
         """)
-    
 
-    col1, col2 = st.columns(2)
-
-    
+    col1, col2 = st.columns(2)    
     col2.header("Graficos")
     original = st.write("Graficos por construir")
-
-    
     col1.header("Knowledge Interaction")
     col1.write("C....")
 
 
-
-
-
+    # Funcionalidad de Chat que puedo crear para que responda.
     st.chat_input()
 
 

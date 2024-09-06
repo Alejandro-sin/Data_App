@@ -25,3 +25,14 @@ El propósito de este día es:
 - El propósito del día es cargar los CSV, explorarlos y verificar que no contengan valores atípicos. En caso contrario, lo que haré será planear como limpiar e imputar la data, y crear persistir en los stages que tenemos del patrón medallón, aquí llegaríamos a Silver.
 
 
+
+### Día 3
+
+
+- El propósito de este  día es crear una API para subir archivos. y hacer un mini CRUD.
+- Guardarlos en la base de datos , Sqlite. Postgresql.
+- Procesar los CSV 
+    -> Wrangling, Enchancing.
+    -> Guardar en Gold.
+
+- 
