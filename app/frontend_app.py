@@ -21,9 +21,9 @@ import time
 
 
 
+API_URL = "http://127.0.0.1:8000/data"
 
 
-#API_URL = "http://127.0.0.1:8000/files"
 options = ["DataBox", "KnowledgeBox"]
 
 

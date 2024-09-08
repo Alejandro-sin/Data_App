@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
-from utils.dbs_utils import Base
-
+from db.database import Base
 
 
 class HiredEmployee(Base):
