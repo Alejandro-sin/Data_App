@@ -9,7 +9,8 @@ Y un treshold para dropear los datos si la fila tiene más NaN
 '''
 # %%
 import pandas as pd
-from pipe.preprocess import impute_and_clean
+
+
 
 def process_employees(df):
     print("Valores nulos antes de la limpieza:")
