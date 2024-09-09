@@ -1,10 +1,11 @@
 from typing import Annotated
-from fastapi import FastAPI, Depends, HTTPException, Path
-from starlette import status
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.database import engine, SessionLocal
 from models.models import HiredEmployee, Department, Job
-from sqlalchemy import text
+from neo4j import GraphDatabase
+from scripts.neo4j_scripts import persons_count, most_frequent_job, most_important_department
+from streamlit_agraph import agraph, Node, Edge, Config
 
 
 app = FastAPI(
@@ -24,7 +25,7 @@ app = FastAPI(
 )
 
 
-
+# SQL
 def get_db():
     db = SessionLocal()
     try:
@@ -35,6 +36,29 @@ def get_db():
 
 # dependency injection
 db_dependency = Annotated[Session, Depends(get_db)] 
+
+
+
+# NEO4J
+def graph_session():
+    URI = "neo4j+s://a575d5a9.databases.neo4j.io:7687"
+    AUTH = ("neo4j", "yIjVz15ZVDbIFAyjLdA8tjacG-Re7_Cd8G_rY5YesTo")
+
+    with GraphDatabase.driver(URI, auth=AUTH) as driver:    
+        return driver
+
+
+driver = graph_session()
+session = driver.session(database="neo4j")
+
+
+def query_graph(query, parameters=None):    
+    with driver.session() as session:
+        result = session.run(query, parameters)
+        return [record for record in result]
+
+
+
 
 
 # Retirnar toda la data con un path param
@@ -78,4 +102,36 @@ async def get_all_from_table(db: db_dependency, table_name: str):
 
 
 
-# Retornar la data
+
+@app.get("/employees_count", tags=["Data"],
+         description="Obtain count of employees by department ")
+async def get_number_employees():
+    result = query_graph(persons_count)
+    return result
+
+
+@app.get("/most_frequent_job", tags=["Data"])
+async def get_most_frequent_job():
+    result = query_graph(most_frequent_job)
+    return result
+
+
+@app.get("/most_important_department", tags=["Data"])
+async def most_important_department():
+    result = query_graph(most_important_department)
+    return result
+
+
+
+
+@app.get("/streamlit_agraph")
+async def render_streamlit():
+ 
+    relations_and_nodes = """
+
+    MATCH (p:Person)-[h:HOLDS]->(j:Job) RETURN p,h,j
+
+    """
+    results = query_graph(relations_and_nodes)
+
+    return results

@@ -10,14 +10,17 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from streamlit_agraph import agraph, Node, Edge, Config
 from streamlit_agraph.config import Config, ConfigBuilder
-from services.graph_creator import populate_graph_from_neo4j, query_graph
+
+
+
+from neo4j import GraphDatabase
 
 import pandas as pd
 from io import StringIO
 import requests as rq
 from sqlalchemy import create_engine
 from utils import dbs_utils, eda_utils
-from pipe.preprocess import process_employees
+from pipe.preprocess import process_employees, get_employees_count, get_most_hired_by_departments
 from db.database import engine
 import os
 import time
@@ -46,7 +49,8 @@ def clean_filename(filename):
     name = os.path.splitext(filename)[0]  
     return name.replace(" ", "_")  
 
-        
+
+# To Batch Upload
 def process_chunks(file, columns, table_name, chunksize=1000):
     for chunk in pd.read_csv(file, 
                              sep=",", 
@@ -104,63 +108,74 @@ if select == "DataBox":
         # eda_utils.review_dataset(dataframe)
 
         os.makedirs(os.path.dirname(BRONZE_PATH), exist_ok=True)
-
-        
         # Persist in bronce Landing
         dataframe.to_csv(BRONZE_PATH)
 
-        #Process to silver
-        if table_name == "hired_employees":
-            df = process_employees(dataframe, SILVER_PATH)
-        elif table_name == "departments":
-            #df = process_employees(dataframe, SILVER_PATH)
-            pass
-        elif table_name == 'jobs':
-            pass
+        
+        if st.button("Process", type="primary"):
+            st.write("______________________________________________________")
+            
+            with st.spinner('Wait for it...'):
+                time.sleep(1.5)
+                #Process to silver
+                if table_name == "hired_employees":
+                    st.markdown("#### Análisis de Contrataciones por Departamento y Puesto en 2021")
+                    df = process_employees(dataframe, SILVER_PATH)
+                    # get_employees_count, get_most_hired_by_departments
+                    df_1 = get_employees_count(df)
+                    st.dataframe(df_1, width=1000)
+                    st.markdown("#### Análisis Departamento por encima de la media")
+                    df_2 = get_most_hired_by_departments(df)
+                    st.dataframe(df_2, width=1000)
+                else:
+                    st.dataframe(dataframe, width=1000)
+        
+        # When file needs to be batched
 
-        st.dataframe(dataframe)
+        #if table_name != "No table Name":
+            # Procesar el archivo por lotes de 1000 filas
+        #    process_chunks(uploaded_file, columns, table_name)
+        #else:
+            # Si no se puede determinar el nombre de la tabla o las columnas
+            #st.error("Invalid name for table!")
+
         
 
 
-
-
-
-    
-
-        st.write("______________________________________________________")
-        with st.spinner('Wait for it...'):
-
-            time.sleep(1.5)
-            #st.markdown(f"""#### Processing Batch of: :green[{len(cleaned_df)}] rows for table: :green['{table_name}']""")
-            #st.write("Data Persisted: ")
-            #st.dataframe(cleaned_df,width=1000)
-
-            time.sleep(1.5)
-
-            df_persited = pd.read_sql(table_name, con=engine)
-        if table_name != "No table Name":
-            # Procesar el archivo por lotes de 1000 filas
-            process_chunks(uploaded_file, columns, table_name)
-        else:
-            # Si no se puede determinar el nombre de la tabla o las columnas
-            st.error("Invalid name for table!")
-
-
+### 
 elif select =="KnowledgeBox":
-    st.markdown("""
-        # KnowledgeBox
-        """)
+        
+    import requests
+    # NEO4J
+    response = requests.get("http://127.0.0.1:8000/streamlit_agraph")
+    results = response.content
 
-    col1, col2 = st.columns(2)    
-    col2.header("Graficos")
-    original = st.write("Graficos por construir")
-    col1.header("Knowledge Interaction")
-    col1.write("C....")
+    nodes = []
+    edges = []
 
-    
+    id = results[0].data()["p"]['id']
+    id
 
-    # Funcionalidad de Chat que puedo crear para que responda.
-    st.chat_input()
+    for _, result in enumerate(results):
+        id = results[_].data()["p"]['id']
+        name = results[_].data()["p"]['name']
+        relation =results[_].data()["h"][1]
+        target = results[_].data()["j"]["name"]
+        nodes.append(Node(id=id, label=name, size=25))
+        edges.append(Edge(source=name, label=relation, target=target,))
+
+
+    config = Config(width=750,
+                        height=950,
+                        directed=True, 
+                        physics=True, 
+                        hierarchical=False,
+                        # **kwargs
+                        ) 
+
+    return_value = agraph(nodes=nodes[:3], 
+                            edges=edges[:3], 
+                            config=config)
 
 
 def main():

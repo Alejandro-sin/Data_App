@@ -9,17 +9,26 @@ Y un treshold para dropear los datos si la fila tiene más NaN
 '''
 
 import pandas as pd
+from pathlib import Path
+
+
 
 
 def process_employees(df, path_to_persist=None):
     '''
-    Tiene como proósito limpiar el dataset
+    Tiene como proósito limpiar el dataset relizar transformaicones
+
+    args: 
+        df
+        path_to_persist
+
     '''
     # Cambio columna
     df.rename(
         columns={
             "id" :"employee_id"
         }, inplace=True)   
+    
     # Quiero imputar fechas vacías
     fecha_dummy = pd.to_datetime('2000-01-01')
     df_employees_1 = impute_and_clean(df, nan_threshold=0.5)
@@ -37,61 +46,7 @@ def process_employees(df, path_to_persist=None):
     # Persistir en Silver
     df_hired_employees_c.to_csv(path_to_persist)
 
-    return "Processed Employees Table"
-
-
-
-
-
-def clean_jobs():
-    '''
-    Tiene como proósito limpiar el dataset
-    '''
-    pass
-
-
-def clean_departments():
-    '''
-    Tiene como proósito limpiar el dataset
-    '''
-    pass
-
-
-def process_employeesccc(df):
-    print("Valores nulos antes de la limpieza:")
-    print(df.isnull().sum())
-
-    # limpiar
-    cleaned_df = impute_and_clean(df, nan_threshold=0.5)
-
-    # Cambiar tipos de datos y extraer el año para los quarters
-    cleaned_df['datetime'] = pd.to_datetime(cleaned_df['datetime'], errors='coerce')
-    cleaned_df['year'] = cleaned_df['datetime'].dt.year
-    cleaned_df['quarter'] = cleaned_df['datetime'].dt.to_period('Q')
-
-    # Filtrar la data para el año 2021 y fillear los NA con un valor fijo
-    cleaned_df_hired_2021 = cleaned_df[cleaned_df['year'] == 2021]
-    cleaned_df['department_id'] = cleaned_df['department_id'].fillna(-1).astype(int)
-    cleaned_df['job_id'] = cleaned_df['job_id'].fillna(-1).astype(int)
-    cleaned_df['year'] = cleaned_df['datetime'].dt.year.fillna(-1).astype(int)
-
-    # Agregaciones por departamento
-    grouped_df = cleaned_df_hired_2021.groupby(['department_id', 'job_id', 'quarter']).size().reset_index(name='num_employees')
-    grouped_df_sorted = grouped_df.sort_values(by=['department_id', 'job_id', 'quarter'])
-
-    print("Número de empleados contratados por trabajo y departamento en 2021:")
-    print(grouped_df_sorted)
-
-    mean_employees_per_dept = cleaned_df_hired_2021.groupby('department_id').size().mean()
-    above_avg_depts = cleaned_df_hired_2021.groupby('department_id').size().reset_index(name='num_employees')
-    above_avg_depts = above_avg_depts[above_avg_depts['num_employees'] > mean_employees_per_dept]
-    above_avg_depts_sorted = above_avg_depts.sort_values(by='num_employees', ascending=False)
-
-
-    print("Departamentos que contrataron más empleados que la media en 2021:")
-    print(above_avg_depts_sorted)
-
-
+    return df_hired_employees_c
 
 
 
@@ -123,3 +78,68 @@ def impute_and_clean(df, nan_threshold=0.5, impute_value_text="Not Specified"):
     cleaned_df = df.dropna(thresh=nan_threshold_columns)
 
     return cleaned_df
+
+
+def get_employees_count(df_hired_employees_c, data_dir="D:/_Projects/Data_App/data/silver"):
+    # Definir las rutas de los archivos de manera dinámica
+    jobs_file = Path(data_dir) / "cleaned_jobs.csv"
+    departments_file = Path(data_dir) / "cleaned_departments.csv"
+    
+    # Verificar si los archivos existen
+    if not jobs_file.exists():
+        raise FileNotFoundError(f"El archivo {jobs_file} no existe.")
+    if not departments_file.exists():
+        raise FileNotFoundError(f"El archivo {departments_file} no existe.")
+    
+    # Leer los archivos CSV
+    jobs_df = pd.read_csv(jobs_file)
+    departments_df = pd.read_csv(departments_file)
+
+    # Filtrar empleados contratados en 2021
+    df_hired_employees_c_filtered = df_hired_employees_c[df_hired_employees_c["datetime"].dt.year == 2021]
+
+    # Join con jobs y departments
+    merged_df = pd.merge(df_hired_employees_c_filtered, jobs_df, on="job_id")
+    merged_df = pd.merge(merged_df, departments_df, on="department_id")
+
+    # Agrupar por department, job y quarter, y contar el número de empleados contratados
+    result = merged_df.groupby(['department_name', 'job_name', 'quarter']).size().reset_index(name='num_employees_hired')
+    
+    # Ordenar el resultado por department, job y quarter
+    result_df = result.sort_values(by=['department_name', 'job_name', 'quarter'])
+
+    return result_df
+
+
+
+def get_most_hired_by_departments(df_hired_employees_c, data_dir="D:/_Projects/Data_App/data/silver"):
+    # Definir la ruta del archivo de departamentos
+    departments_file = Path(data_dir) / "cleaned_departments.csv"
+    
+    # Verificar si el archivo de departamentos existe
+    if not departments_file.exists():
+        raise FileNotFoundError(f"El archivo {departments_file} no existe.")
+    
+    # Leer el archivo de departamentos
+    departments_df = pd.read_csv(departments_file)
+    
+    # Filtrar empleados contratados en 2021
+    df_hired_employees_c_filtered = df_hired_employees_c[df_hired_employees_c["datetime"].dt.year == 2021]
+    
+    # Agrupar por department_id y contar el número de empleados contratados
+    df_hired_employees_grouped = df_hired_employees_c_filtered.groupby(by=["department_id"]).size().reset_index(name='num_employees_hired')
+    
+    # Calcular la media de empleados contratados
+    mean_hired = df_hired_employees_grouped["num_employees_hired"].mean()  # valor escalar
+    
+    # Filtrar departamentos con contrataciones por encima de la media
+    departments_df_above_mean = df_hired_employees_grouped[df_hired_employees_grouped["num_employees_hired"] > mean_hired]
+    
+    # Hacer el join con el archivo de departamentos
+    result = departments_df_above_mean.merge(departments_df, on="department_id")
+    
+    # Ordenar y seleccionar columnas necesarias
+    result_df = result[['department_id', 'department_name', 'num_employees_hired']].sort_values(by='num_employees_hired', ascending=False)
+    
+    return result_df
+
