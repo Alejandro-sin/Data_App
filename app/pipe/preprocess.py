@@ -7,12 +7,57 @@ En valor del texto se ususará u nvalor fijo
 Y un treshold para dropear los datos si la fila tiene más NaN
 
 '''
-# %%
+
 import pandas as pd
 
 
+def process_employees(df, path_to_persist=None):
+    '''
+    Tiene como proósito limpiar el dataset
+    '''
+    # Cambio columna
+    df.rename(
+        columns={
+            "id" :"employee_id"
+        }, inplace=True)   
+    # Quiero imputar fechas vacías
+    fecha_dummy = pd.to_datetime('2000-01-01')
+    df_employees_1 = impute_and_clean(df, nan_threshold=0.5)
+    df_hired_employees_c = df_employees_1.fillna(fecha_dummy)
 
-def process_employees(df):
+    # Imputar valores vacíos de camplos clave
+    df_hired_employees_c['department_id'] = df_hired_employees_c['department_id'].fillna(-1).astype(int)
+    df_hired_employees_c['job_id'] = df_hired_employees_c['job_id'].fillna(-1).astype(int)
+    
+    # Transformaciones del dataset para fecha
+    df_hired_employees_c['datetime'] = pd.to_datetime(df_hired_employees_c['datetime'], errors='coerce')
+    df_hired_employees_c['year'] = df_hired_employees_c['datetime'].dt.year
+    df_hired_employees_c['quarter'] = df_hired_employees_c['datetime'].dt.to_period('Q')
+    
+    # Persistir en Silver
+    df_hired_employees_c.to_csv(path_to_persist)
+
+    return "Processed Employees Table"
+
+
+
+
+
+def clean_jobs():
+    '''
+    Tiene como proósito limpiar el dataset
+    '''
+    pass
+
+
+def clean_departments():
+    '''
+    Tiene como proósito limpiar el dataset
+    '''
+    pass
+
+
+def process_employeesccc(df):
     print("Valores nulos antes de la limpieza:")
     print(df.isnull().sum())
 
@@ -30,7 +75,7 @@ def process_employees(df):
     cleaned_df['job_id'] = cleaned_df['job_id'].fillna(-1).astype(int)
     cleaned_df['year'] = cleaned_df['datetime'].dt.year.fillna(-1).astype(int)
 
-    # Agregaciones por departamen
+    # Agregaciones por departamento
     grouped_df = cleaned_df_hired_2021.groupby(['department_id', 'job_id', 'quarter']).size().reset_index(name='num_employees')
     grouped_df_sorted = grouped_df.sort_values(by=['department_id', 'job_id', 'quarter'])
 

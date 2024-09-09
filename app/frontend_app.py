@@ -8,17 +8,19 @@ La idea es que aquí corra
 
 import streamlit as st
 from streamlit_option_menu import option_menu
+from streamlit_agraph import agraph, Node, Edge, Config
+from streamlit_agraph.config import Config, ConfigBuilder
+from services.graph_creator import populate_graph_from_neo4j, query_graph
+
 import pandas as pd
 from io import StringIO
 import requests as rq
 from sqlalchemy import create_engine
 from utils import dbs_utils, eda_utils
 from pipe.preprocess import process_employees
+from db.database import engine
 import os
 import time
-
-
-
 
 
 API_URL = "http://127.0.0.1:8000/data"
@@ -38,14 +40,11 @@ with st.sidebar:
 
 #response =  rq.get(API_URL)
 #st.write(response.content)
-engine = create_engine('sqlite:///:memory:')
-db_name = "data_db"
-
 
 
 def clean_filename(filename):
-    name = os.path.splitext(filename)[0]  # Elimina la extensión
-    return name.replace(" ", "_")  # Reemplaza espacios con guiones bajos para que sea válido como nombre de tabla
+    name = os.path.splitext(filename)[0]  
+    return name.replace(" ", "_")  
 
         
 def process_chunks(file, columns, table_name, chunksize=1000):
@@ -60,7 +59,7 @@ def process_chunks(file, columns, table_name, chunksize=1000):
         dbs_utils.save_dataframe_to_sql(chunk, db_name='sql_db', table_name=table_name)
 
 
-engine = dbs_utils.create_engine_to_sqlite()
+
 
 if select == "DataBox":
     st.markdown("""
@@ -76,20 +75,20 @@ if select == "DataBox":
 
         # Definir columnas dependiendo del nombre de la tabla
         if table_name == 'jobs':
-            columns = ["id", "job"]
+            columns = ["job_id", "job_name"]
         elif table_name == "departments":
-            columns = ["id", "department"]
+            columns = ["department_id", "department_name"]
         elif table_name == "hired_employees":
-            columns = ["id", "name", "datetime", "department_id", "job_id"]
+            columns = ["employee_id", "name", "datetime", "department_id", "job_id"]
         else:
             st.warning('The headers of data can be inferred', icon="⚠️")
             table_name = "No table Name"
             columns = None  # Se infiere el encabezado manual
 
 
-        BRONZE_PATH = f"../data/bronce/{table_name}.csv"
-        SILVER_PATH = f"../data/silver/{table_name}.csv"
-        GOLD_PATH = f"../data/gold/{table_name}.csv"
+        BRONZE_PATH = f"./data/bronce/{table_name}.csv"
+        SILVER_PATH = f"data/silver/{table_name}.csv"
+        GOLD_PATH = f"data/gold/{table_name}.csv"
 
 
 
@@ -102,27 +101,39 @@ if select == "DataBox":
                                     )
         
         # EDA exploration
-        eda_utils.review_dataset(dataframe)
+        # eda_utils.review_dataset(dataframe)
 
+        os.makedirs(os.path.dirname(BRONZE_PATH), exist_ok=True)
 
-        # Persist in bronce
+        
+        # Persist in bronce Landing
         dataframe.to_csv(BRONZE_PATH)
 
+        #Process to silver
+        if table_name == "hired_employees":
+            df = process_employees(dataframe, SILVER_PATH)
+        elif table_name == "departments":
+            #df = process_employees(dataframe, SILVER_PATH)
+            pass
+        elif table_name == 'jobs':
+            pass
 
-        # PROCESAMIENTO:
-        df = process_employees(dataframe)
+        st.dataframe(dataframe)
+        
 
 
-        #
 
+
+
+    
 
         st.write("______________________________________________________")
         with st.spinner('Wait for it...'):
 
             time.sleep(1.5)
-            st.markdown(f"""#### Processing Batch of: :green[{len(cleaned_df)}] rows for table: :green['{table_name}']""")
-            st.write("Data Persisted: ")
-            st.dataframe(cleaned_df,width=1000)
+            #st.markdown(f"""#### Processing Batch of: :green[{len(cleaned_df)}] rows for table: :green['{table_name}']""")
+            #st.write("Data Persisted: ")
+            #st.dataframe(cleaned_df,width=1000)
 
             time.sleep(1.5)
 
@@ -146,6 +157,7 @@ elif select =="KnowledgeBox":
     col1.header("Knowledge Interaction")
     col1.write("C....")
 
+    
 
     # Funcionalidad de Chat que puedo crear para que responda.
     st.chat_input()

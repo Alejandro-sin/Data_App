@@ -78,4 +78,4 @@ async def get_all_from_table(db: db_dependency, table_name: str):
 
 
 
-# Retornar la
+# Retornar la data
