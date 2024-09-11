@@ -29,7 +29,8 @@ import time
 API_URL = "http://127.0.0.1:8000/data"
 
 
-options = ["DataBox", "KnowledgeBox"]
+options = ["DataBox"] 
+           #"KnowledgeBox"]
 
 
 with st.sidebar:
@@ -139,45 +140,7 @@ if select == "DataBox":
             # Si no se puede determinar el nombre de la tabla o las columnas
             #st.error("Invalid name for table!")
 
-        
-
-
-### 
-elif select =="KnowledgeBox":
-        
-    import requests
-    # NEO4J
-    response = requests.get("http://127.0.0.1:8000/streamlit_agraph")
-    results = response.content
-
-    nodes = []
-    edges = []
-
-    id = results[0].data()["p"]['id']
-    id
-
-    for _, result in enumerate(results):
-        id = results[_].data()["p"]['id']
-        name = results[_].data()["p"]['name']
-        relation =results[_].data()["h"][1]
-        target = results[_].data()["j"]["name"]
-        nodes.append(Node(id=id, label=name, size=25))
-        edges.append(Edge(source=name, label=relation, target=target,))
-
-
-    config = Config(width=750,
-                        height=950,
-                        directed=True, 
-                        physics=True, 
-                        hierarchical=False,
-                        # **kwargs
-                        ) 
-
-    return_value = agraph(nodes=nodes[:3], 
-                            edges=edges[:3], 
-                            config=config)
-
-
+ 
 def main():
     pass
 
